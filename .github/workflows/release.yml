@@ -1,0 +1,37 @@
+name: Release
+
+# Push a per-skill tag (e.g. racehorse-naming-ja/v0.2.0) to build that skill's
+# zip and publish a GitHub Release. Notes are taken from the skill's CHANGELOG.md.
+on:
+  push:
+    tags:
+      - '*/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse tag
+        id: t
+        run: |
+          TAG="${GITHUB_REF_NAME}"          # e.g. racehorse-naming-ja/v0.2.0
+          echo "skill=${TAG%/v*}" >> "$GITHUB_OUTPUT"
+          echo "ver=${TAG##*/v}"  >> "$GITHUB_OUTPUT"
+
+      - name: Build skill zip
+        run: python3 scripts/build.py "${{ steps.t.outputs.skill }}"
+
+      - name: Extract release notes
+        run: python3 scripts/release_notes.py "${{ steps.t.outputs.skill }}" "${{ steps.t.outputs.ver }}" > notes.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.t.outputs.skill }} v${{ steps.t.outputs.ver }}
+          body_path: notes.md
+          files: dist/${{ steps.t.outputs.skill }}.zip
