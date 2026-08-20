@@ -34,7 +34,6 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 - タグを push すると GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
 
 ```bash
-# 例: racehorse-naming-ja を 0.2.0 でリリース
-git tag racehorse-naming-ja/v0.2.0
-git push origin racehorse-naming-ja/v0.2.0
+# 版が SKILL.md の frontmatter と一致するか検証してからタグを push
+python scripts/release.py racehorse-naming-ja
 ```
