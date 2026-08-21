@@ -11,6 +11,7 @@ Per skill it checks:
 
 Exits non-zero if any skill fails. Used by pre-commit and the lint workflow.
 """
+
 from __future__ import annotations
 
 import re
@@ -42,10 +43,7 @@ def version(fm: str) -> str | None:
 
 def changelog_has(skill_dir: Path, ver: str) -> bool:
     cl = skill_dir / "CHANGELOG.md"
-    return cl.is_file() and any(
-        line.startswith(f"## [{ver}]")
-        for line in cl.read_text(encoding="utf-8").splitlines()
-    )
+    return cl.is_file() and any(line.startswith(f"## [{ver}]") for line in cl.read_text(encoding="utf-8").splitlines())
 
 
 def check(skill_dir: Path) -> list[str]:

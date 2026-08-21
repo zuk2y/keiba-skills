@@ -10,6 +10,7 @@ Usage:
 
 If <version> is omitted, the frontmatter version is used.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,9 +35,7 @@ def frontmatter_version(skill_md: Path) -> str | None:
 
 
 def git(*args: str, capture: bool = False) -> str:
-    r = subprocess.run(
-        ["git", *args], cwd=ROOT, check=True, text=True, capture_output=capture
-    )
+    r = subprocess.run(["git", *args], cwd=ROOT, check=True, text=True, capture_output=capture)
     return (r.stdout or "").strip()
 
 
@@ -71,9 +70,7 @@ def main() -> int:
         fail(f"version mismatch: requested {version} but frontmatter is {fm_ver}")
 
     # run the skill validator (frontmatter + CHANGELOG) as a hard gate
-    lint = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "lint_skills.py"), args.skill], cwd=ROOT
-    )
+    lint = subprocess.run([sys.executable, str(ROOT / "scripts" / "lint_skills.py"), args.skill], cwd=ROOT)
     if lint.returncode != 0:
         fail("skill validation failed (see lint_skills output above)")
 
@@ -84,8 +81,7 @@ def main() -> int:
     # non-blocking warning
     if git("status", "--porcelain", "--", f"skills/{args.skill}", capture=True):
         print(
-            f"warning: uncommitted changes under skills/{args.skill}; "
-            "the tag points to HEAD and may not include them",
+            f"warning: uncommitted changes under skills/{args.skill}; the tag points to HEAD and may not include them",
             file=sys.stderr,
         )
 

@@ -6,6 +6,7 @@ Used by the release workflow to turn the changelog entry into the Release body.
 Usage:
     python scripts/release_notes.py <skill-name> <version>
 """
+
 from __future__ import annotations
 
 import sys

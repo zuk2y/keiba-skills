@@ -8,6 +8,7 @@ Usage:
     python scripts/build.py              # build every skill
     python scripts/build.py <skill-name> # build only that skill
 """
+
 from __future__ import annotations
 
 import shutil
