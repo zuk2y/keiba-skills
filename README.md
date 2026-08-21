@@ -40,6 +40,11 @@ python scripts/release.py racehorse-naming-ja
 
 ## 開発
 
+**前提ツール**
+
+- **Python 3.x** — `scripts/*.py` と lint の実行に必要。
+- **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
+
 Lint は **pre-commit（ローカル・任意）** と **GitHub Actions（CI・自動）** で走る。ローカルで有効化するには:
 
 ```bash
