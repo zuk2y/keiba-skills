@@ -40,19 +40,27 @@ python scripts/release.py racehorse-naming-ja
 
 ## 開発
 
+開発ガイド（前提ツール・ディレクトリ構成・リリース手順など）は [`AGENTS.md`](AGENTS.md) に集約している。要点のみ以下に記す。
+
 **前提ツール**
 
 - **Python 3.x** — `scripts/*.py` と lint の実行に必要。
 - **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
 
-Lint は **pre-commit（ローカル・任意）** と **GitHub Actions（CI・自動）** で走る。ローカルで有効化するには:
+**開発フロー（PR ベース）** — `main` への直接 push はしない。変更はブランチ＋Pull Request で入れる。
 
 ```bash
-pipx run pre-commit install    # 以後 git commit 時に自動実行（ruff・整形・スキル検証など）
-pipx run pre-commit run --all-files   # 全ファイルに手動実行
-pipx run pre-commit autoupdate        # フックの版を最新に固定
+git checkout -b docs/xxx        # feat/ fix/ docs/ chore/ を用途で使い分け
+# 変更・コミット（pre-commit が整形・検証）
+git push -u origin HEAD
+gh pr create                    # CI（Lint）が緑になったらマージ
 ```
 
-**ruff は pre-commit が自動管理する**ため個別インストールは不要（CI も同様に用意する）。直接叩きたい場合のみ `pipx run ruff check .` / `pipx run ruff format .`（グローバル導入なし）。
+**Lint** は pre-commit（ローカル・任意）と GitHub Actions（CI・自動）で走る。ローカルで有効化:
 
-スキル単体の検証は `python scripts/lint_skills.py [スキル名]`（`release.py` も内部で実行する）。
+```bash
+pipx run pre-commit install           # 以後 git commit 時に自動実行（ruff・整形・スキル検証など）
+pipx run pre-commit run --all-files   # 全ファイルに手動実行
+```
+
+ruff は pre-commit が自動管理するため個別インストールは不要。スキル単体の検証は `python scripts/lint_skills.py [スキル名]`。
