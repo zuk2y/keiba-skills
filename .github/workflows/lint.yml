@@ -1,0 +1,26 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Ruff (Python lint)
+        run: |
+          pip install ruff
+          ruff check .
+
+      - name: Validate skills (frontmatter + CHANGELOG)
+        run: python3 scripts/lint_skills.py
+
+      - name: actionlint (workflow files)
+        run: |
+          curl -sSfL -o download-actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+          bash download-actionlint.bash
+          ./actionlint -color

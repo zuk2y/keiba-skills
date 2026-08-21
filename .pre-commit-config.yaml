@@ -1,0 +1,25 @@
+# Install: pipx run pre-commit install   (hooks then run on `git commit`)
+# Bump revs: pre-commit autoupdate
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.3
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: lint-skills
+        name: validate skills (frontmatter + CHANGELOG)
+        entry: python3 scripts/lint_skills.py
+        language: system
+        pass_filenames: false

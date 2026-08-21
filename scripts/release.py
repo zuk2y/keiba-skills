@@ -33,16 +33,6 @@ def frontmatter_version(skill_md: Path) -> str | None:
     return m.group(1) if m else None
 
 
-def changelog_has(skill_dir: Path, version: str) -> bool:
-    cl = skill_dir / "CHANGELOG.md"
-    if not cl.is_file():
-        return False
-    return any(
-        line.startswith(f"## [{version}]")
-        for line in cl.read_text(encoding="utf-8").splitlines()
-    )
-
-
 def git(*args: str, capture: bool = False) -> str:
     r = subprocess.run(
         ["git", *args], cwd=ROOT, check=True, text=True, capture_output=capture
@@ -80,17 +70,18 @@ def main() -> int:
     if version != fm_ver:
         fail(f"version mismatch: requested {version} but frontmatter is {fm_ver}")
 
+    # run the skill validator (frontmatter + CHANGELOG) as a hard gate
+    lint = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "lint_skills.py"), args.skill], cwd=ROOT
+    )
+    if lint.returncode != 0:
+        fail("skill validation failed (see lint_skills output above)")
+
     tag = f"{args.skill}/v{version}"
     if git("tag", "-l", tag, capture=True):
         fail(f"tag already exists: {tag}")
 
-    # non-blocking warnings
-    if not changelog_has(skill_dir, version):
-        print(
-            f"warning: CHANGELOG.md has no '## [{version}]' section "
-            "(release notes will be a placeholder)",
-            file=sys.stderr,
-        )
+    # non-blocking warning
     if git("status", "--porcelain", "--", f"skills/{args.skill}", capture=True):
         print(
             f"warning: uncommitted changes under skills/{args.skill}; "

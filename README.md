@@ -37,3 +37,15 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 # 版が SKILL.md の frontmatter と一致するか検証してからタグを push
 python scripts/release.py racehorse-naming-ja
 ```
+
+## 開発
+
+Lint は **pre-commit（ローカル・任意）** と **GitHub Actions（CI・自動）** で走る。ローカルで有効化するには:
+
+```bash
+pipx run pre-commit install    # 以後 git commit 時に自動実行（ruff・整形・スキル検証など）
+pipx run pre-commit run --all-files   # 全ファイルに手動実行
+pipx run pre-commit autoupdate        # フックの版を最新に固定
+```
+
+スキル単体の検証は `python scripts/lint_skills.py [スキル名]`（`release.py` も内部で実行する）。
