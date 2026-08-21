@@ -48,4 +48,6 @@ pipx run pre-commit run --all-files   # 全ファイルに手動実行
 pipx run pre-commit autoupdate        # フックの版を最新に固定
 ```
 
+**ruff は pre-commit が自動管理する**ため個別インストールは不要（CI も同様に用意する）。直接叩きたい場合のみ `pipx run ruff check .` / `pipx run ruff format .`（グローバル導入なし）。
+
 スキル単体の検証は `python scripts/lint_skills.py [スキル名]`（`release.py` も内部で実行する）。
