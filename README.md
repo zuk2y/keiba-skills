@@ -40,8 +40,6 @@ python scripts/release.py racehorse-naming-ja
 
 ## 開発
 
-このリポジトリで作業する人間・AIエージェント向けの開発ガイド。AIエージェント向けの補足は [`AGENTS.md`](AGENTS.md) を参照（本節をベースに、エージェント固有の注意事項のみ追記している）。
-
 ### ディレクトリ構成
 
 - `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。
@@ -55,13 +53,7 @@ python scripts/release.py racehorse-naming-ja
 
 ### 開発フロー（PR は任意）
 
-個人開発のため PR は必須にしていない。`main` への直接 push を許可しつつ、場面で使い分ける。
-
-- **軽微な変更**（ドキュメント・小さな修正）→ `main` に直接コミット＆push でよい。
-- **PR を切ると良い場面**:
-  - `@claude` に修正を任せたいとき（PR／Issue 上でのみ起動する）。
-  - 大きめ・壊れやすい変更を、CI 緑を確認してから入れたいとき。
-  - 変更意図を記録として残したいとき。
+`main` への直接 push を基本とする。PR を使うかどうかは修正者が判断・明示する。
 
 PR を使う場合の手順:
 
@@ -69,7 +61,7 @@ PR を使う場合の手順:
 2. 変更してコミット（pre-commit が整形・検証を実行）。
 3. push → `gh pr create`。CI（Lint）が緑になったらマージ。
 
-CI（Lint）は push・PR いずれでも走るため、直接 push でも壊れればすぐ気づける。`main` は force push と削除のみ保護している。
+CI（Lint）は push・PR いずれでも走る。`main` は force push と削除のみ保護している。
 
 ### ローカル検証
 
