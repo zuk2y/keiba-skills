@@ -29,7 +29,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 
 ### ディレクトリ構成
 
-- `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。
+- `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。評価する場合は `evals/`（下記[評価](#評価eval)）。
 - `scripts/` — ビルド／リリース／検証スクリプト（Python 統一）。
 - `.github/workflows/` — CI（lint）とリリース自動化。
 
@@ -67,6 +67,29 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 - `skills/<name>/SKILL.md` を作る。`name` はディレクトリ名と一致、小文字・数字・ハイフンのみ、64 文字以内。`description` は 1024 文字以内。`metadata.version` を持たせる。
 - `skills/<name>/CHANGELOG.md` を [Keep a Changelog](https://keepachangelog.com/ja/) 形式で作り、`## [<version>]` セクションを用意する（無いとリリースノートが空になり検証で落ちる）。
 - ライセンスは `LICENSE` / `NOTICE` を同梱し、frontmatter に `license` を記載。
+
+### 評価（eval）
+
+スキルの **精度** と **トークン量** を計測する。評価エンジンは自前で作らず、Anthropic 公式の
+**skill-creator**（Apache-2.0）を土台にする。欲しい比較軸を公式機構がそのまま持つため:
+
+- **スキル有無**（`with_skill/` vs `without_skill/`）・**修正前後**（`skill-snapshot/` ＋ `comparator`/`analyzer` でブラインド比較）
+- **精度**（`evals.json` のアサーションを `grader` が採点 → `aggregate_benchmark` が pass_rate 集計）
+- **トークン量**（各 run の `total_tokens` を平均±標準偏差で集計）
+
+**前提（必須）**: 評価には **skill-creator の導入が必須**。本リポジトリには eval データ（`evals.json`）しか
+置かないため、未導入では実行できない。リポジトリに取り込まず Claude Code のプラグインとして導入する
+（Apache-2.0 の帰属義務を負わない・常に最新・配布ビルドを汚さない）:
+
+```
+/plugin marketplace add anthropics/skills
+/plugin install example-skills@anthropic-agent-skills
+```
+
+**配置**: eval データは公式レイアウトに合わせて `skills/<name>/evals/evals.json` に置く（SKILL.md と同居）。
+
+- 配布物には含めない。`scripts/build.py` はスキルのルート直下 `evals/` を zip から除外する（公式 `package_skill.py` の `ROOT_EXCLUDE_DIRS` に準拠）。
+- skill-creator の実行結果（`*-workspace/`・`iteration-*/` 等）は生成物なのでコミットしない（[.gitignore](.gitignore) で除外）。コミットするのは `evals.json` だけ。
 
 ### コミット / PR 規約
 
