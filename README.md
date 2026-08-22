@@ -82,9 +82,16 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 （Apache-2.0 の帰属義務を負わない・常に最新・配布ビルドを汚さない）:
 
 ```
+# 対話セッション（Claude Code CLI）では slash コマンドで
 /plugin marketplace add anthropics/skills
 /plugin install example-skills@anthropic-agent-skills
+
+# slash が使えない環境（VSCode 拡張・SDK 等）では等価な CLI サブコマンドで
+claude plugin marketplace add anthropics/skills
+claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=user（リポジトリ外）
 ```
+
+導入確認は `claude plugin list`。skill-creator は `example-skills` プラグインに含まれる。
 
 **配置**: eval データは公式レイアウトに合わせて `skills/<name>/evals/evals.json` に置く（SKILL.md と同居）。
 
