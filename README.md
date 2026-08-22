@@ -40,19 +40,55 @@ python scripts/release.py racehorse-naming-ja
 
 ## 開発
 
-**前提ツール**
+このリポジトリで作業する人間・AIエージェント向けの開発ガイド。AIエージェント向けの補足は [`AGENTS.md`](AGENTS.md) を参照（本節をベースに、エージェント固有の注意事項のみ追記している）。
+
+### ディレクトリ構成
+
+- `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。
+- `scripts/` — ビルド／リリース／検証スクリプト（Python 統一）。
+- `.github/workflows/` — CI（lint）とリリース自動化。
+
+### 前提ツール
 
 - **Python 3.x** — `scripts/*.py` と lint の実行に必要。
 - **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
 
-Lint は **pre-commit（ローカル・任意）** と **GitHub Actions（CI・自動）** で走る。ローカルで有効化するには:
+### 開発フロー（PR は任意）
+
+個人開発のため PR は必須にしていない。`main` への直接 push を許可しつつ、場面で使い分ける。
+
+- **軽微な変更**（ドキュメント・小さな修正）→ `main` に直接コミット＆push でよい。
+- **PR を切ると良い場面**:
+  - `@claude` に修正を任せたいとき（PR／Issue 上でのみ起動する）。
+  - 大きめ・壊れやすい変更を、CI 緑を確認してから入れたいとき。
+  - 変更意図を記録として残したいとき。
+
+PR を使う場合の手順:
+
+1. 作業ブランチを切る（例: `git checkout -b feat/xxx`）。接頭辞は `feat/`（機能）・`fix/`（修正）・`docs/`（文書）・`chore/`（雑務）。
+2. 変更してコミット（pre-commit が整形・検証を実行）。
+3. push → `gh pr create`。CI（Lint）が緑になったらマージ。
+
+CI（Lint）は push・PR いずれでも走るため、直接 push でも壊れればすぐ気づける。`main` は force push と削除のみ保護している。
+
+### ローカル検証
 
 ```bash
-pipx run pre-commit install    # 以後 git commit 時に自動実行（ruff・整形・スキル検証など）
-pipx run pre-commit run --all-files   # 全ファイルに手動実行
-pipx run pre-commit autoupdate        # フックの版を最新に固定
+pipx run pre-commit install          # 以後 commit 時に自動実行（推奨）
+pipx run pre-commit run --all-files  # 全ファイルに手動実行
+python scripts/lint_skills.py [スキル名]   # スキル単体の frontmatter + CHANGELOG 検証
 ```
 
-**ruff は pre-commit が自動管理する**ため個別インストールは不要（CI も同様に用意する）。直接叩きたい場合のみ `pipx run ruff check .` / `pipx run ruff format .`（グローバル導入なし）。
+ruff は pre-commit が自動管理するため個別インストールは不要。直接叩く場合のみ `pipx run ruff check .` / `pipx run ruff format .`。
 
-スキル単体の検証は `python scripts/lint_skills.py [スキル名]`（`release.py` も内部で実行する）。
+### スキルを追加するとき
+
+- `skills/<name>/SKILL.md` を作る。`name` はディレクトリ名と一致、小文字・数字・ハイフンのみ、64 文字以内。`description` は 1024 文字以内。`metadata.version` を持たせる。
+- `skills/<name>/CHANGELOG.md` を [Keep a Changelog](https://keepachangelog.com/ja/) 形式で作り、`## [<version>]` セクションを用意する（無いとリリースノートが空になり検証で落ちる）。
+- ライセンスは `LICENSE` / `NOTICE` を同梱し、frontmatter に `license` を記載。
+
+### コミット / PR 規約
+
+- コミットメッセージは命令形の要約 1 行（英語）＋必要なら本文。
+- PR は目的と変更点を簡潔に。関連 Issue があれば紐付ける。
+- PR をマージする場合は CI（Lint）が緑であることを条件とする。
