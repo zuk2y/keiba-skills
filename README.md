@@ -25,19 +25,6 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 - **スキル対応チャット（Claude など）**: [Releases](https://github.com/zuk2y/keiba-skills/releases) からスキルの zip をダウンロードしてアップロード。
 - **その他のチャット**: [`SKILL.md`](skills/racehorse-naming-ja/SKILL.md) を開き、内容をコピーして指示／プロジェクトに貼り付け。
 
-## リリース／タグ運用
-
-スキルは個別にバージョン管理する。
-
-- タグ形式: **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は各 `SKILL.md` の `metadata.version` と一致させる。
-- 変更は各スキルの `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/ja/) 形式）に記録する。
-- タグを push すると GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
-
-```bash
-# 版が SKILL.md の frontmatter と一致するか検証してからタグを push
-python scripts/release.py racehorse-naming-ja
-```
-
 ## 開発
 
 ### ディレクトリ構成
@@ -63,6 +50,8 @@ PR を使う場合の手順:
 
 CI（Lint）は push・PR いずれでも走る。`main` は force push と削除のみ保護している。
 
+**スキル自体（`skills/<name>/` 配下）の修正を利用者に公開するとき**は、変更が `main` に入ったあと、版を上げてタグを打つ（→ [リリース（版を上げてタグを打つ）](#リリース版を上げてタグを打つ)）。これがタグを打つタイミング。スクリプト・CI・ドキュメントなどリポジトリ運用側だけの変更ではタグは打たない。
+
 ### ローカル検証
 
 ```bash
@@ -84,3 +73,17 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 - コミットメッセージは命令形の要約 1 行（英語）＋必要なら本文。
 - PR は目的と変更点を簡潔に。関連 Issue があれば紐付ける。
 - PR をマージする場合は CI（Lint）が緑であることを条件とする。
+
+### リリース（版を上げてタグを打つ）
+
+開発フローの最終ステップ。スキルは個別にバージョン管理し、**スキル自体（`skills/<name>/` 配下）の修正を公開するとき**だけ版を上げてタグを打つ。スクリプト・CI・ドキュメントなどリポジトリ運用側だけの変更ではタグは不要。
+
+1. `SKILL.md` の `metadata.version` を上げ、そのスキルの `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/ja/) 形式）に変更を記録する。
+2. `python scripts/release.py <スキル名>` を実行する。版が frontmatter と一致するか検証したうえでタグを push する。
+3. タグ push を受けて GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
+
+タグ形式は **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は `SKILL.md` の `metadata.version` と一致させる。
+
+```bash
+python scripts/release.py racehorse-naming-ja
+```
