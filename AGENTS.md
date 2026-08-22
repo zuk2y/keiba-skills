@@ -6,7 +6,7 @@
 
 ## エージェント向けの注意事項
 
-- `main` への直接 push は禁止。変更は必ずブランチ＋Pull Request で入れる（[README.md の開発フロー](README.md#開発フローpr-ベース)を参照）。
+- 変更は基本 `main` に直接コミットしてよい（PR は任意）。`@claude` に任せる場合や大きめの変更のときは PR を切る（[README.md の開発フロー](README.md#開発フローpr-は任意)を参照）。
 - コミット前に `pipx run pre-commit run --all-files` を実行し、lint／検証を通すこと。
 - スキルを追加・変更する場合は [README.md のスキル追加手順](README.md#スキルを追加するとき)に従う。
 - コミットメッセージ・PR は [README.md のコミット / PR 規約](README.md#コミット--pr-規約)に従う。

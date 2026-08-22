@@ -53,16 +53,23 @@ python scripts/release.py racehorse-naming-ja
 - **Python 3.x** — `scripts/*.py` と lint の実行に必要。
 - **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
 
-### 開発フロー（PR ベース）
+### 開発フロー（PR は任意）
 
-`main` への直接 push は行わない。変更は必ずブランチ＋Pull Request で入れる。
+個人開発のため PR は必須にしていない。`main` への直接 push を許可しつつ、場面で使い分ける。
 
-1. `main` を最新にして作業ブランチを切る（例: `git checkout -b docs/xxx` / `feat/xxx` / `fix/xxx`）。
+- **軽微な変更**（ドキュメント・小さな修正）→ `main` に直接コミット＆push でよい。
+- **PR を切ると良い場面**:
+  - `@claude` に修正を任せたいとき（PR／Issue 上でのみ起動する）。
+  - 大きめ・壊れやすい変更を、CI 緑を確認してから入れたいとき。
+  - 変更意図を記録として残したいとき。
+
+PR を使う場合の手順:
+
+1. 作業ブランチを切る（例: `git checkout -b feat/xxx`）。接頭辞は `feat/`（機能）・`fix/`（修正）・`docs/`（文書）・`chore/`（雑務）。
 2. 変更してコミット（pre-commit が整形・検証を実行）。
-3. ブランチを push し、`gh pr create` などで PR を作成。
-4. CI（Lint）が緑になったらマージ。マージ後にブランチを削除。
+3. push → `gh pr create`。CI（Lint）が緑になったらマージ。
 
-ブランチ名の接頭辞: `feat/`（機能）・`fix/`（修正）・`docs/`（文書）・`chore/`（雑務）。
+CI（Lint）は push・PR いずれでも走るため、直接 push でも壊れればすぐ気づける。`main` は force push と削除のみ保護している。
 
 ### ローカル検証
 
@@ -84,4 +91,4 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 
 - コミットメッセージは命令形の要約 1 行（英語）＋必要なら本文。
 - PR は目的と変更点を簡潔に。関連 Issue があれば紐付ける。
-- CI が緑であることをマージ条件とする。
+- PR をマージする場合は CI（Lint）が緑であることを条件とする。
