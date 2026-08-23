@@ -93,6 +93,11 @@ def main(argv: list[str]) -> int:
     for skill_dir in sorted(SKILLS_DIR.iterdir()):
         if not skill_dir.is_dir():
             continue
+        # Skip eval workspaces (skill-creator convention: <skill>-workspace/,
+        # excluded via .gitignore's skills/**/*-workspace/). These are transient
+        # eval artifacts, not skills, and have no SKILL.md.
+        if skill_dir.name.endswith("-workspace"):
+            continue
         if target and skill_dir.name != target:
             continue
         count += 1
