@@ -1,12 +1,12 @@
 # keiba-skills
 
-競馬に関する [Agent Skills](https://agentskills.io)（AIエージェント／アシスタント向けの再利用可能なスキル）集。各スキルは `skills/<スキル名>/SKILL.md` に配置（Agent Skills 標準準拠）。
+競馬に関する [Agent Skills](https://agentskills.io)。各スキルは `skills/<スキル名>/SKILL.md`。
 
 ## 収録スキル
 
 | スキル | 概要 |
 |---|---|
-| [`racehorse-naming-ja`](skills/racehorse-naming-ja/SKILL.md) | 日本の競走馬の馬名を考案（生成）・品評（評価）する。血統・冠名・言語・語感から候補を作り、既存案を登録基準への適合と完成度でグレード評価する。 |
+| [`racehorse-naming-ja`](skills/racehorse-naming-ja/SKILL.md) | 日本の競走馬の馬名を考案・品評する。血統・冠名・言語・語感から候補を作り、既存案を登録基準への適合と完成度でグレード評価する。 |
 
 ## 導入
 
@@ -23,7 +23,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 ### AIチャット
 
 - **スキル対応チャット（Claude など）**: [Releases](https://github.com/zuk2y/keiba-skills/releases) からスキルの zip をダウンロードしてアップロード。
-- **その他のチャット**: [`SKILL.md`](skills/racehorse-naming-ja/SKILL.md) を開き、内容をコピーして指示／プロジェクトに貼り付け。
+- **その他のチャット**: `skills/<スキル名>/SKILL.md` を開き、内容をコピーして指示／プロジェクトに貼り付け。
 
 ## 開発
 
@@ -37,6 +37,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 
 - **Python 3.x** — `scripts/*.py` と lint の実行に必要。
 - **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
+- **skill-creator** — スキルの評価に使う。
 
 ### 開発フロー（PR は任意）
 
@@ -78,8 +79,7 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 - **トークン量**（各 run の `total_tokens` を平均±標準偏差で集計）
 
 **前提（必須）**: 評価には **skill-creator の導入が必須**。本リポジトリには eval データ（`evals.json`）しか
-置かないため、未導入では実行できない。リポジトリに取り込まず Claude Code のプラグインとして導入する
-（Apache-2.0 の帰属義務を負わない・常に最新・配布ビルドを汚さない）:
+置かないため、未導入では実行できない。リポジトリに取り込まず Claude Code のプラグインとして導入する:
 
 ```
 # 対話セッション（Claude Code CLI）では slash コマンドで
@@ -113,7 +113,3 @@ claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=use
 3. タグ push を受けて GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
 
 タグ形式は **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は `SKILL.md` の `metadata.version` と一致させる。
-
-```bash
-python scripts/release.py racehorse-naming-ja
-```
