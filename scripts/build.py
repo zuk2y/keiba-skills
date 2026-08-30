@@ -24,7 +24,8 @@ DIST_DIR = ROOT / "dist"
 # 配布 zip から除外するパターン（公式 skill-creator の package_skill.py に準拠）。
 EXCLUDE_DIRS = {"__pycache__", "node_modules"}
 EXCLUDE_GLOBS = {"*.pyc"}
-EXCLUDE_FILES = {".DS_Store"}
+# 配布しない開発・エージェント向けファイル（AGENTS.md/CLAUDE.md はスキル本体ではない）。
+EXCLUDE_FILES = {".DS_Store", "AGENTS.md", "CLAUDE.md"}
 # スキルのルート直下でのみ除外するディレクトリ（eval 資材はオーサリング用で配布しない）。
 ROOT_EXCLUDE_DIRS = {"evals"}
 

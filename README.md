@@ -29,7 +29,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 
 ### ディレクトリ構成
 
-- `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。評価する場合は `evals/`（下記[評価](#評価eval)）。
+- `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。評価する場合は `evals/`（下記[評価](#評価eval)）。スキル固有のエージェント指針があれば `AGENTS.md`（＋Claude Code 用に `@AGENTS.md` を書いた `CLAUDE.md`）を置く。これらは開発用のため配布 zip からは除外される。
 - `scripts/` — ビルド／リリース／検証スクリプト（Python 統一）。
 - `.github/workflows/` — CI（lint）とリリース自動化。
 
