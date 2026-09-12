@@ -53,6 +53,23 @@ CI（Lint）は push・PR いずれでも走る。`main` は force push と削�
 
 **スキル自体（`skills/<name>/` 配下）の修正を利用者に公開するとき**は、変更が `main` に入ったあと、版を上げてタグを打つ（→ [リリース（版を上げてタグを打つ）](#リリース版を上げてタグを打つ)）。これがタグを打つタイミング。スクリプト・CI・ドキュメントなどリポジトリ運用側だけの変更ではタグは打たない。
 
+### 作業環境（ローカル / クラウドセッション）
+
+このリポジトリは、手元の PC（各自の git 資格情報で操作する環境。Claude Code CLI などのエージェントを含む）でも、[Claude Code on the web](https://code.claude.com/docs/en/claude-code-on-the-web) のクラウドセッションでも開発できる。ただし**クラウドセッションは GitHub App として push する**ため、次の3つができない（いずれも GitHub が 403 で拒否する）。
+
+| 操作 | クラウドセッション | 手元の PC |
+|---|---|---|
+| ブランチへの push・PR 作成 | ○ | ○ |
+| **タグ ref の作成・push** | ✗ | ○ |
+| **`.github/workflows/` 配下の変更の push** | ✗（`workflows` 権限がない） | ○ |
+| **ワークフローの API 起動（`workflow_dispatch`）** | ✗（`Actions: write` がない） | ○（ブラウザの Run workflow でも可） |
+
+App が要求する権限はアプリ側が定義しており利用者側で追加できないため、上記はクラウドセッション側の設定では解消できない。運用としてはこう分担する。
+
+- **通常の変更**（スキル本文・スクリプト・ドキュメント）: どちらでも可。クラウドセッションはブランチに push して PR を作るところまで行える。
+- **ワークフローの変更**: 手元の PC からコミットする。クラウドセッションで編集した場合は、ファイルを受け取って手元で適用する。
+- **リリース**: 手元から `scripts/release.py`、またはブラウザで Actions → Release → *Run workflow*（→ [リリース](#リリース版を上げてタグを打つ)）。後者はタグ push を伴わないため、クラウドセッションで作業した流れのままブラウザだけで完結できる。
+
 ### ローカル検証
 
 ```bash
@@ -111,7 +128,7 @@ claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=use
 1. `SKILL.md` の `metadata.version` を上げ、そのスキルの `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/ja/) 形式）に変更を記録する。変更を `main` に入れる。
 2. リリースを起動する。次のどちらでもよい。
    - **ローカルから**: `python scripts/release.py <スキル名>` を実行する。版が frontmatter と一致するか検証したうえでタグを push する。
-   - **GitHub 上から**（タグを push できない環境向け）: Actions → **Release** → *Run workflow* でスキル名を入力して実行する（`workflow_dispatch`。API からも起動できる）。ワークフローが `SKILL.md` の `metadata.version` を読んでタグを作成するので、手元でタグを打つ必要がない。この起動口はワークフロー定義が `main` にある場合のみ表示される。
+   - **GitHub 上から**（タグを push できない[クラウドセッション](#作業環境ローカル--クラウドセッション)向け）: Actions → **Release** → *Run workflow* でスキル名を入力して実行する（`workflow_dispatch`。API からも起動できる）。ワークフローが `SKILL.md` の `metadata.version` を読んでタグを作成するので、手元でタグを打つ必要がない。この起動口はワークフロー定義が `main` にある場合のみ表示される。
 3. いずれの場合も GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
 
 タグ形式は **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は `SKILL.md` の `metadata.version` と一致させる（ワークフローは公開前にこの一致と CHANGELOG の該当節を検証し、合わなければ落とす）。
