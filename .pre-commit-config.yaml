@@ -19,7 +19,7 @@ repos:
   - repo: local
     hooks:
       - id: lint-skills
-        name: validate skills (frontmatter + CHANGELOG)
+        name: validate skills (frontmatter + CHANGELOG + evals)
         entry: python3 scripts/lint_skills.py
         language: system
         pass_filenames: false

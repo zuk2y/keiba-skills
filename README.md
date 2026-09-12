@@ -75,7 +75,7 @@ App が要求する権限はアプリ側が定義しており利用者側で追�
 ```bash
 pipx run pre-commit install          # 以後 commit 時に自動実行（推奨）
 pipx run pre-commit run --all-files  # 全ファイルに手動実行
-python scripts/lint_skills.py [スキル名]   # スキル単体の frontmatter + CHANGELOG 検証
+python scripts/lint_skills.py [スキル名]   # スキル単体の frontmatter + CHANGELOG + evals 検証
 ```
 
 ruff は pre-commit が自動管理するため個別インストールは不要。直接叩く場合のみ `pipx run ruff check .` / `pipx run ruff format .`。
@@ -114,6 +114,20 @@ claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=use
 
 - 配布物には含めない。`scripts/build.py` はスキルのルート直下 `evals/` を zip から除外する（公式 `package_skill.py` の `ROOT_EXCLUDE_DIRS` に準拠）。
 - skill-creator の実行結果（`*-workspace/`・`iteration-*/` 等）は生成物なのでコミットしない（[.gitignore](.gitignore) で除外）。コミットするのは `evals.json` だけ。
+
+**品評ケースのメタデータ**: 品評ケース（`"mode": "品評"`）は期待する採点を機械可読な形で持ち、`scripts/lint_skills.py` が SKILL.md の「土台グレード」表と突き合わせて自己矛盾（記号と帯の食い違い）を検出する。
+
+| フィールド | 内容 |
+|---|---|
+| `target_grade_band` | 期待する総合グレード帯。`S+`/`S`/`A`/`B`/`C`/`不可`。幅を持たせるなら `A〜S` |
+| `target_symbols` | 土台3軸の記号 `{"連想": …, "言語一致": …, "背景": …}`。値は `—`/`△`/`○`/`◎`/`◉`、範囲は `○〜◎` |
+| `target_band_shift` | 副次パーフェクト昇格 `+1`・制約違反による減格 `-1` などの段数（省略時 0） |
+| `target_note` | 自由記述（そのケースの狙い・補足） |
+
+- 検証は「記号から採点表が導く帯が `target_grade_band` に収まるか」。導かれる帯を含んでいれば通る（記号が `B` を導くとき `C〜B` は可）。
+- `target_grade_band`・`target_symbols`・`target_note` は品評ケースの必須。固定しないケース（登録可否が主眼・記号が開くなど）は値に `null` を明示する。
+- `不可`（Mゲートの確定却下）は採点に進まないので記号を持たない。
+- 採点表は SKILL.md から読むため、表を改訂すれば検証もそのまま追随する（表の書式を変えると lint が落ちて突き合わせを促す）。
 
 ### コミット / PR 規約
 

@@ -4,6 +4,7 @@
 
 - **`SKILL.md` の例には実在の競走馬を使う。** 血統・命名由来などの事実は裏取りしてから書く。
 - **`evals/evals.json` で題材にしている馬・馬名・その父母は、`SKILL.md` の例に使わない**（評価への過剰適合回避）。例は実在かつ非evalの馬から選ぶ（例: クロワデュノール／ブラウンラチェット／ウオッカ）。
+- **品評ケースを追加・改訂するときは、期待する採点を `target_grade_band` / `target_symbols` / `target_band_shift` / `target_note` で書く**（[README の評価（eval）](../../README.md#評価eval)）。`SKILL.md` の採点表と食い違えば `scripts/lint_skills.py` が落ちるので、採点表を変えたときは既存ケースの記号・帯も合わせて見直す。
 
 ## JAIRS 文書（登録基準・審査）の扱い
 
