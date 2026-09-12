@@ -1,11 +1,21 @@
 name: Release
 
-# Push a per-skill tag (e.g. racehorse-naming-ja/v0.2.0) to build that skill's
-# zip and publish a GitHub Release. Notes are taken from the skill's CHANGELOG.md.
+# A skill is released in either of two ways:
+#   - push a per-skill tag (e.g. racehorse-naming-ja/v0.2.0), or
+#   - run this workflow manually (Actions -> Release -> Run workflow, or the
+#     API), which reads the skill's metadata.version and creates that tag here.
+# Either way the skill's zip is built and a GitHub Release is published, with
+# notes taken from the skill's CHANGELOG.md.
 on:
   push:
     tags:
       - '*/v*'
+  workflow_dispatch:
+    inputs:
+      skill:
+        description: 'Skill directory name under skills/ (e.g. racehorse-naming-ja)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,12 +26,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Parse tag
+      - name: Resolve skill and version
         id: t
+        env:
+          INPUT_SKILL: ${{ inputs.skill }}
         run: |
-          TAG="${GITHUB_REF_NAME}"          # e.g. racehorse-naming-ja/v0.2.0
-          echo "skill=${TAG%/v*}" >> "$GITHUB_OUTPUT"
-          echo "ver=${TAG##*/v}"  >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            SKILL="$INPUT_SKILL"
+            VER="$(python3 scripts/skill_version.py "$SKILL")"
+          else
+            TAG="$GITHUB_REF_NAME"          # e.g. racehorse-naming-ja/v0.2.0
+            SKILL="${TAG%/v*}"
+            VER="${TAG##*/v}"
+          fi
+          {
+            echo "skill=$SKILL"
+            echo "ver=$VER"
+            echo "tag=$SKILL/v$VER"
+          } >> "$GITHUB_OUTPUT"
+
+      # Same gate as scripts/release.py runs locally: valid frontmatter and a
+      # CHANGELOG section, and a version that matches the tag being released.
+      - name: Validate skill
+        env:
+          SKILL: ${{ steps.t.outputs.skill }}
+          VER: ${{ steps.t.outputs.ver }}
+        run: |
+          python3 scripts/lint_skills.py "$SKILL"
+          FM_VER="$(python3 scripts/skill_version.py "$SKILL")"
+          if [ "$FM_VER" != "$VER" ]; then
+            echo "::error::version mismatch: releasing $VER but SKILL.md frontmatter is $FM_VER"
+            exit 1
+          fi
+
+      # Manual runs have no tag yet; create it with the workflow's own token so
+      # releasing does not depend on tag-push permission outside Actions.
+      - name: Create tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.t.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::tag already exists: $TAG"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Build skill zip
         run: python3 scripts/build.py "${{ steps.t.outputs.skill }}"
@@ -32,6 +84,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.t.outputs.tag }}
           name: ${{ steps.t.outputs.skill }} v${{ steps.t.outputs.ver }}
           body_path: notes.md
           files: dist/${{ steps.t.outputs.skill }}.zip
