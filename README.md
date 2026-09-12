@@ -108,8 +108,10 @@ claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=use
 
 開発フローの最終ステップ。スキルは個別にバージョン管理し、**スキル自体（`skills/<name>/` 配下）の修正を公開するとき**だけ版を上げてタグを打つ。スクリプト・CI・ドキュメントなどリポジトリ運用側だけの変更ではタグは不要。
 
-1. `SKILL.md` の `metadata.version` を上げ、そのスキルの `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/ja/) 形式）に変更を記録する。
-2. `python scripts/release.py <スキル名>` を実行する。版が frontmatter と一致するか検証したうえでタグを push する。
-3. タグ push を受けて GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
+1. `SKILL.md` の `metadata.version` を上げ、そのスキルの `CHANGELOG.md`（[Keep a Changelog](https://keepachangelog.com/ja/) 形式）に変更を記録する。変更を `main` に入れる。
+2. リリースを起動する。次のどちらでもよい。
+   - **ローカルから**: `python scripts/release.py <スキル名>` を実行する。版が frontmatter と一致するか検証したうえでタグを push する。
+   - **GitHub 上から**（タグを push できない環境向け）: Actions → **Release** → *Run workflow* でスキル名を入力して実行する（`workflow_dispatch`。API からも起動できる）。ワークフローが `SKILL.md` の `metadata.version` を読んでタグを作成するので、手元でタグを打つ必要がない。この起動口はワークフロー定義が `main` にある場合のみ表示される。
+3. いずれの場合も GitHub Actions が該当スキルの zip をビルドし、**CHANGELOG の該当版を本文にした Release** を自動公開する。
 
-タグ形式は **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は `SKILL.md` の `metadata.version` と一致させる。
+タグ形式は **`<スキル名>/v<SemVer>`**（例: `racehorse-naming-ja/v0.2.0`）。版は `SKILL.md` の `metadata.version` と一致させる（ワークフローは公開前にこの一致と CHANGELOG の該当節を検証し、合わなければ落とす）。
