@@ -19,6 +19,7 @@ Run the suite with `claude plugin eval` (see README.md, 評価).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -52,9 +53,27 @@ CRITERIA = (
     "\n"
     "条件: {assertion}\n"
     "\n"
-    "判定は回答本文に書かれた内容だけを根拠にする。語句が表面的に一致するだけでは PASS にしない。"
-    "根拠が見つからなければ FAIL。\n"
+    "判定は回答本文に書かれた内容だけを根拠にする。"
+    "条件が「〜がある／〜している」型なら、その内容が本文に実際に書かれているときだけ PASS"
+    "（語句の表面的な一致では PASS にしない）。"
+    "条件が「〜がない／〜していない」型なら、本文に該当する記述が見当たらなければ PASS、見つかれば FAIL。\n"
 )
+
+
+# 主節が否定形（〜がない／〜していない）だけの条件への注意書き。小型ジャッジは「挙げられたものが本文にない」ことを
+# 「記載がないので FAIL」と逆に読むことがある（実測: Haiku が 3 票とも誤判定し、この注意書きで 3 票とも正しく PASS）。
+# 肯定の節を併せ持つ条件（「〜である（…していない）」「〜として扱い、〜していない」）には付けない。
+NEGATIVE_END = re.compile(r"(ない|なく|せず|おらず)$")
+NEGATIVE_HINT = (
+    "注意: この条件は「〜がない／〜していない」ことを求める否定型。挙げられたものが本文に見当たらなければ PASS、"
+    "見つかれば FAIL。挙げられたものが本文に無いことを「記載がない」という理由で FAIL にしてはいけない。\n"
+)
+
+
+def negative_only(assertion: str) -> bool:
+    """主節が否定形で終わり、肯定の節を併せ持たない条件か（括弧書きは補足として除いて見る）。"""
+    main = re.sub(r"（[^（）]*）", "", assertion.strip()).rstrip("。")
+    return "、" not in main and NEGATIVE_END.search(main) is not None
 
 
 def yq(value: object) -> str:
@@ -98,9 +117,10 @@ def render_case(skill: str, case: dict) -> dict[str, str]:
     skill_call = r'"skill"\s*:\s*"(?:[\w-]+:)?' + skill + '"'
     files["graders/skill-fired.md"] = f"---\ntype: tool_used\ntool: Skill\ninput_match: {yq(skill_call)}\n---\n"
     for i, assertion in enumerate(case["assertions"], start=1):
-        files[f"graders/a{i:02d}.md"] = "---\ntype: llm\n---\n" + CRITERIA.format(
-            prompt=case["prompt"].strip(), assertion=assertion
-        )
+        body = CRITERIA.format(prompt=case["prompt"].strip(), assertion=assertion)
+        if negative_only(assertion):
+            body += "\n" + NEGATIVE_HINT
+        files[f"graders/a{i:02d}.md"] = "---\ntype: llm\n---\n" + body
     return files
 
 
