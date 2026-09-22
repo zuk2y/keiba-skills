@@ -23,3 +23,8 @@ repos:
         entry: python3 scripts/lint_skills.py
         language: system
         pass_filenames: false
+      - id: gen-plugin-evals
+        name: plugin eval cases match evals.json
+        entry: python3 scripts/gen_plugin_evals.py --check
+        language: system
+        pass_filenames: false
