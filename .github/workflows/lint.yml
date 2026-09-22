@@ -19,8 +19,9 @@ jobs:
       - name: Validate skills (frontmatter + CHANGELOG)
         run: python3 scripts/lint_skills.py
 
+      # 固定タグの公式イメージを使う（main の生スクリプトを取得して無検証で実行しない）。
+      # 版を上げるときはタグを書き換える: https://github.com/rhysd/actionlint/releases
       - name: actionlint (workflow files)
-        run: |
-          curl -sSfL -o download-actionlint.bash https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
-          bash download-actionlint.bash
-          ./actionlint -color
+        uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
