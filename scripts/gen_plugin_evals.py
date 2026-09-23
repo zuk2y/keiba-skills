@@ -6,8 +6,14 @@ truth. This script derives the case directories the official runner reads:
 
   evals/<skill>/<NN-name>/prompt.md              run limits + the user prompt
   evals/<skill>/<NN-name>/graders/skill-fired.md tool_used: the skill was invoked
-  evals/<skill>/<NN-name>/graders/aNN.md         one llm grader per assertion (plus the SKILL.md
-                                                 rules an assertion presupposes, see SKILL_CONTEXT)
+  evals/<skill>/<NN-name>/graders/aNN.md         one grader per assertion: llm by default, or a free
+                                                 regex grader when evals/graders.json maps the text
+  evals/<skill>/<NN-name>/graders/mNN.md         one llm grader for a group of assertions that
+                                                 evals/graders.json merges (weight = group size)
+
+evals/graders.json (optional, per skill) keeps evals.json in the skill-creator format while cutting
+judge calls: {"regex": {"<assertion text>": {"pattern": ..., "flags"?: ..., "match"?: ...}},
+              "merge": [{"name": ..., "assertions": [<text>, ...], "weight"?: N}]}.
 
 Usage:
     python scripts/gen_plugin_evals.py            # regenerate for every skill with evals.json
@@ -122,8 +128,11 @@ def case_dir_name(case: dict) -> str:
     return f"{int(case['id']):02d}-{case['name']}"
 
 
-def render_case(skill: str, case: dict, skill_md: str) -> dict[str, str]:
-    """1 ケースぶんの {相対パス: 内容} を返す。"""
+def render_case(skill: str, case: dict, skill_md: str, spec: dict | None = None) -> dict[str, str]:
+    """1 ケースぶんの {相対パス: 内容} を返す。spec は evals/graders.json（regex 化・統合の指定）。"""
+    spec = spec or {}
+    regex_map: dict[str, dict] = spec.get("regex", {})
+    merge_of: dict[str, dict] = {a: g for g in spec.get("merge", []) for a in g["assertions"]}
     mode = case.get("mode", "")
     if mode not in MODE_TAGS:
         raise ValueError(f"{skill} evals #{case.get('id')}: mode が未知: {mode!r}（{'/'.join(MODE_TAGS)}）")
@@ -153,12 +162,44 @@ def render_case(skill: str, case: dict, skill_md: str) -> dict[str, str]:
     # スキルが発火したか（`plugin:skill` の名前空間付きでも一致）。
     skill_call = r'"skill"\s*:\s*"(?:[\w-]+:)?' + skill + '"'
     files["graders/skill-fired.md"] = f"---\ntype: tool_used\ntool: Skill\ninput_match: {yq(skill_call)}\n---\n"
+    merged: dict[str, list[tuple[int, str]]] = {}
     for i, assertion in enumerate(case["assertions"], start=1):
+        if assertion in regex_map:  # 文字の有無で決まる条件はモデルを呼ばない
+            r = regex_map[assertion]
+            fm = f"type: regex\npattern: {yq(r['pattern'])}\n"
+            if r.get("flags"):
+                fm += f"flags: {yq(r['flags'])}\n"
+            if r.get("match"):
+                fm += f"match: {yq(r['match'])}\n"
+            files[f"graders/a{i:02d}.md"] = f"---\n{fm}---\n{assertion}\n"
+            continue
+        if assertion in merge_of:  # 同じ側面の条件はまとめて 1 回で判定する
+            merged.setdefault(merge_of[assertion]["name"], []).append((i, assertion))
+            continue
         body = CRITERIA.format(prompt=case["prompt"].strip(), assertion=assertion)
         if negative_only(assertion):
             body += "\n" + NEGATIVE_HINT
         body += skill_context(skill_md, assertion)
         files[f"graders/a{i:02d}.md"] = "---\ntype: llm\n---\n" + body
+    for k, (name, items) in enumerate(merged.items(), start=1):
+        if len(items) == 1:  # 相方がいなければ通常の grader に戻す
+            i, assertion = items[0]
+            body = CRITERIA.format(prompt=case["prompt"].strip(), assertion=assertion)
+            if negative_only(assertion):
+                body += "\n" + NEGATIVE_HINT
+            files[f"graders/a{i:02d}.md"] = "---\ntype: llm\n---\n" + body + skill_context(skill_md, assertion)
+            continue
+        group = next(g for g in spec["merge"] if g["name"] == name)
+        weight = group.get("weight", len(items))  # 既定: 統合前と同じ比重（ケースの総重み＝アサーション数）
+        listed = "\n".join(f"{n}. {a}（a{i:02d}）" for n, (i, a) in enumerate(items, start=1))
+        body = (
+            f"依頼文: {case['prompt'].strip()}\n\n"
+            "次の条件を**すべて**満たしていれば PASS、ひとつでも満たしていなければ FAIL。\n\n"
+            f"{listed}\n\n"
+            "判定は回答本文に書かれた内容だけを根拠にする。各条件は、その内容が本文に実際に書かれているときだけ満たす"
+            "（語句の表面的な一致では満たさない）。\n"
+        )
+        files[f"graders/m{k:02d}-{name}.md"] = f"---\ntype: llm\nweight: {weight}\n---\n" + body
     return files
 
 
@@ -166,10 +207,12 @@ def render_skill(skill_dir: Path) -> dict[str, str]:
     """スキル 1 つぶんの {evals/<skill>/ からの相対パス: 内容}。"""
     data = json.loads((skill_dir / "evals" / "evals.json").read_text(encoding="utf-8"))
     skill_md = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+    spec_path = skill_dir / "evals" / "graders.json"
+    spec = json.loads(spec_path.read_text(encoding="utf-8")) if spec_path.is_file() else {}
     out: dict[str, str] = {}
     for case in data["evals"]:
         prefix = case_dir_name(case)
-        for rel, content in render_case(skill_dir.name, case, skill_md).items():
+        for rel, content in render_case(skill_dir.name, case, skill_md, spec).items():
             out[f"{prefix}/{rel}"] = content
     return out
 

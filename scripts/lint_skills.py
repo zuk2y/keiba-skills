@@ -10,6 +10,8 @@ Per skill it checks:
     (so release.py / the release workflow produce real notes)
   - evals/evals.json (if present): shape, and that each critique case's scoring
     metadata agrees with the grade table in SKILL.md (see EVALS section below)
+  - evals/graders.json (if present): its regex/merge entries name assertions that
+    exist in evals.json, patterns compile, no assertion is listed twice
 
 Exits non-zero if any skill fails. Used by pre-commit and the lint workflow.
 """
@@ -229,6 +231,44 @@ def check_evals(skill_dir: Path, md: Path) -> list[str]:
     return errs
 
 
+def check_graders(skill_dir: Path) -> list[str]:
+    """evals/graders.json（regex 化・統合の指定）が evals.json のアサーション本文と整合しているか。"""
+    name = skill_dir.name
+    path = skill_dir / "evals" / "graders.json"
+    if not path.is_file():
+        return []
+    try:
+        spec = json.loads(path.read_text(encoding="utf-8"))
+        cases = json.loads((skill_dir / "evals" / "evals.json").read_text(encoding="utf-8"))["evals"]
+    except (json.JSONDecodeError, KeyError, OSError) as e:
+        return [f"{name}: graders.json / evals.json を読めない（{e}）"]
+    texts = {a for c in cases for a in c.get("assertions", [])}
+    errs, seen = [], set()
+    for text, r in spec.get("regex", {}).items():
+        if text not in texts:
+            errs.append(f"{name}: graders.json regex の文言が evals.json にない: {text[:40]}…")
+        if not isinstance(r, dict) or "pattern" not in r:
+            errs.append(f"{name}: graders.json regex には pattern が要る: {text[:40]}…")
+        else:
+            try:
+                re.compile(r["pattern"])
+            except re.error as e:
+                errs.append(f"{name}: graders.json regex を解釈できない（{e}）: {text[:40]}…")
+        if r.get("match") not in (None, "contains", "not_contains") and not str(r.get("match")).startswith("count:"):
+            errs.append(f"{name}: graders.json regex の match が不正: {r.get('match')}")
+        seen.add(text)
+    for g in spec.get("merge", []):
+        if not g.get("name") or len(g.get("assertions", [])) < 2:
+            errs.append(f"{name}: graders.json merge には name と 2 本以上の assertions が要る")
+        for text in g.get("assertions", []):
+            if text not in texts:
+                errs.append(f"{name}: graders.json merge の文言が evals.json にない: {text[:40]}…")
+            if text in seen:
+                errs.append(f"{name}: graders.json で同じ文言が二重に指定されている: {text[:40]}…")
+            seen.add(text)
+    return errs
+
+
 def check(skill_dir: Path) -> list[str]:
     name = skill_dir.name
     md = skill_dir / "SKILL.md"
@@ -262,7 +302,7 @@ def check(skill_dir: Path) -> list[str]:
     elif not changelog_has(skill_dir, ver):
         errs.append(f"{name}: CHANGELOG.md has no '## [{ver}]' section (release notes would be empty)")
 
-    return errs + check_evals(skill_dir, md)
+    return errs + check_evals(skill_dir, md) + check_graders(skill_dir)
 
 
 def main(argv: list[str]) -> int:
