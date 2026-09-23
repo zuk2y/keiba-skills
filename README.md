@@ -119,9 +119,12 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 
 3. 結果は `evals/results/<timestamp>/` の `aggregate-result.json` と `report.html`（自己完結の HTML。ジャッジの票と根拠まで見える）。
 
+   - 利用枠（session limit）に当たると以降の run はエラー付きの score 0 になる。JSON の `cases[].arms.with[].error` を確認し、該当ケースだけ `--case` で回し直す（`--output-dir` を分けて残す）。
+   - `--case` の glob は `*` と `?` だけ（文字クラス・波括弧は一致しない）。複数ケースを選ぶときは `--tag` か、1 ケースずつ起動する。
+
 **費用を抑える設計**（生成スクリプトの定数と実行フラグに対応）:
 
-- 実行は MCP・CLAUDE.md・個人設定を載せない隔離セッション。固定文脈はサブエージェント方式（約 37k tokens）の半分程度で、毎ターンの読み直しがその分減る。
+- 実行は MCP・CLAUDE.md・個人設定を載せない隔離セッション。固定文脈はサブエージェント方式（約 37k tokens）の半分程度で、毎ターンの読み直しがその分減る（39 ケース実測の 1 ラン中央値: API ターン 18→5、Σcache_read 1.19M→0.11M、Σcache_create 70k→40k）。
 - 各ケース `runs: 1`・`max_turns: 40`・`timeout_seconds: 1200`。結果が割れるケースだけ `--runs 3` で回す。暴走は `--max-cost-usd` で止める。
 - `--ablation none` で「スキル無し」対照を省く（既定の with-without は倍の費用。description の発火確認や有無比較のときだけ既定で回す）。
 - 採点は各アサーションを 1 つの `llm` grader（3 票の多数決）にし、`skill-fired` grader でスキルの発火を記録する。ジャッジは `--judge-model sonnet` を指定する（既定の小型モデルは日本語の否定型「〜が漏れていない」を逆に読んで FAIL にすることがあった。ジャッジ費用は実行費用の数％なので Sonnet でも軽い）。
