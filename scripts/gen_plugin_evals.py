@@ -6,7 +6,8 @@ truth. This script derives the case directories the official runner reads:
 
   evals/<skill>/<NN-name>/prompt.md              run limits + the user prompt
   evals/<skill>/<NN-name>/graders/skill-fired.md tool_used: the skill was invoked
-  evals/<skill>/<NN-name>/graders/aNN.md         one llm grader per assertion
+  evals/<skill>/<NN-name>/graders/aNN.md         one llm grader per assertion (plus the SKILL.md
+                                                 rules an assertion presupposes, see SKILL_CONTEXT)
 
 Usage:
     python scripts/gen_plugin_evals.py            # regenerate for every skill with evals.json
@@ -70,6 +71,42 @@ NEGATIVE_HINT = (
 )
 
 
+# アサーションが SKILL.md の規定を前提にしている場合、その規定をジャッジに渡す（ジャッジは SKILL.md を見ない）。
+# キー: アサーション本文に含まれる語 → 同梱する SKILL.md の箇所（H2 節の見出し、または箇条書きの先頭語）。
+# 実測: 「内部呼称…が出力にない」は、規定どおりの表示名「土台となる3軸」や—を含む内訳表を露出と誤判定していた。
+SKILL_CONTEXT = {"内部呼称": ["## 出力の原則", "- **評価内訳表**"]}
+SKILL_CONTEXT_NOTE = (
+    "参考: 以下は SKILL.md の規定。これに沿った表示名・凡例つきの評価記号・"
+    "評価内訳表（土台の3軸＋副次の5軸を—を含めて示す）は、内部呼称や判定手続きの写しに当たらない。\n"
+)
+
+
+def skill_excerpt(skill_md: str, locator: str) -> str:
+    """SKILL.md から H2 節（`## 見出し`）全体、または先頭語が一致する箇条書き 1 項目（字下げ含む）を取り出す。"""
+    lines = skill_md.splitlines()
+    if locator.startswith("## "):
+        out: list[str] = []
+        for line in lines:
+            if line.startswith(locator):
+                out = [line]
+            elif out and line.startswith("## "):
+                break
+            elif out:
+                out.append(line)
+        if not out:
+            raise ValueError(f"SKILL.md に節が見つからない: {locator}")
+        return "\n".join(out).rstrip() + "\n"
+    for line in lines:
+        if line.lstrip().startswith(locator):
+            return line.strip() + "\n"
+    raise ValueError(f"SKILL.md に箇条書きが見つからない: {locator}")
+
+
+def skill_context(skill_md: str, assertion: str) -> str:
+    parts = [skill_excerpt(skill_md, loc) for key, locs in SKILL_CONTEXT.items() if key in assertion for loc in locs]
+    return ("\n" + SKILL_CONTEXT_NOTE + "\n" + "\n".join(parts)) if parts else ""
+
+
 def negative_only(assertion: str) -> bool:
     """主節が否定形で終わり、肯定の節を併せ持たない条件か（括弧書きは補足として除いて見る）。"""
     main = re.sub(r"（[^（）]*）", "", assertion.strip()).rstrip("。")
@@ -85,7 +122,7 @@ def case_dir_name(case: dict) -> str:
     return f"{int(case['id']):02d}-{case['name']}"
 
 
-def render_case(skill: str, case: dict) -> dict[str, str]:
+def render_case(skill: str, case: dict, skill_md: str) -> dict[str, str]:
     """1 ケースぶんの {相対パス: 内容} を返す。"""
     mode = case.get("mode", "")
     if mode not in MODE_TAGS:
@@ -120,6 +157,7 @@ def render_case(skill: str, case: dict) -> dict[str, str]:
         body = CRITERIA.format(prompt=case["prompt"].strip(), assertion=assertion)
         if negative_only(assertion):
             body += "\n" + NEGATIVE_HINT
+        body += skill_context(skill_md, assertion)
         files[f"graders/a{i:02d}.md"] = "---\ntype: llm\n---\n" + body
     return files
 
@@ -127,10 +165,11 @@ def render_case(skill: str, case: dict) -> dict[str, str]:
 def render_skill(skill_dir: Path) -> dict[str, str]:
     """スキル 1 つぶんの {evals/<skill>/ からの相対パス: 内容}。"""
     data = json.loads((skill_dir / "evals" / "evals.json").read_text(encoding="utf-8"))
+    skill_md = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
     out: dict[str, str] = {}
     for case in data["evals"]:
         prefix = case_dir_name(case)
-        for rel, content in render_case(skill_dir.name, case).items():
+        for rel, content in render_case(skill_dir.name, case, skill_md).items():
             out[f"{prefix}/{rel}"] = content
     return out
 

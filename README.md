@@ -110,11 +110,11 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 
    ```bash
    # 1 ケースだけ・1 回・対照なし（ケースや採点基準を調整するとき）
-   claude plugin eval . --case "12-*" --runs 1 --ablation none --allow-tools WebSearch --judge-model sonnet --no-publish
+   claude plugin eval . --case "12-*" --runs 1 --ablation none --allow-tools WebSearch --judge-model opus --no-publish
    # モードで絞る（generate / critique）
-   claude plugin eval . --tag critique --ablation none --allow-tools WebSearch --judge-model sonnet -j 4 --max-cost-usd 20
+   claude plugin eval . --tag critique --ablation none --allow-tools WebSearch --judge-model opus -j 4 --max-cost-usd 20
    # 全ケース（費用上限つき、JSON も残す）
-   claude plugin eval . --ablation none --allow-tools WebSearch --judge-model sonnet -j 4 --max-cost-usd 60 --json evals/results/latest.json
+   claude plugin eval . --ablation none --allow-tools WebSearch --judge-model opus -j 4 --max-cost-usd 60 --json evals/results/latest.json
    ```
 
 3. 結果は `evals/results/<timestamp>/` の `aggregate-result.json` と `report.html`（自己完結の HTML。ジャッジの票と根拠まで見える）。
@@ -127,7 +127,7 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 - 実行は MCP・CLAUDE.md・個人設定を載せない隔離セッション。固定文脈はサブエージェント方式（約 37k tokens）の半分程度で、毎ターンの読み直しがその分減る（39 ケース実測の 1 ラン中央値: API ターン 18→5、Σcache_read 1.19M→0.11M、Σcache_create 70k→40k）。
 - 各ケース `runs: 1`・`max_turns: 40`・`timeout_seconds: 1200`。結果が割れるケースだけ `--runs 3` で回す。暴走は `--max-cost-usd` で止める。
 - `--ablation none` で「スキル無し」対照を省く（既定の with-without は倍の費用。description の発火確認や有無比較のときだけ既定で回す）。
-- 採点は各アサーションを 1 つの `llm` grader（3 票の多数決）にし、`skill-fired` grader でスキルの発火を記録する。ジャッジは `--judge-model sonnet` を指定する（既定の小型モデルは日本語の否定型「〜が漏れていない」を逆に読んで FAIL にすることがあった。ジャッジ費用は実行費用の数％なので Sonnet でも軽い）。
+- 採点は各アサーションを 1 つの `llm` grader（3 票の多数決）にし、`skill-fired` grader でスキルの発火を記録する。ジャッジは `--judge-model opus` を指定する（39 ケース実測で、Sonnet ジャッジは 320 grader 中 68 本を旧方式の Opus 採点と食い違う FAIL にした。日本語の条件文の読み違いが主因で、Opus では解消。ジャッジ費用は 1 周 $20 前後で実行費用の 1/4 以下）。アサーションが SKILL.md の規定（表示名など）を前提にしている場合は、生成スクリプトがその規定を grader の基準文に同梱する（`SKILL_CONTEXT`）。
 - ツールは WebSearch のみ。WebFetch は 1 回 3〜10k tokens を文脈に足すので評価では許可しない（SKILL.md は「一般的なウェブ検索で照合」としており仕様に反しない）。
 - `append_system_prompt` で指示するのは「回答は最終メッセージに全文を書く」「独立した検索は 1 ターンに並列発行する」だけ（判定や手順には触れない）。
 
