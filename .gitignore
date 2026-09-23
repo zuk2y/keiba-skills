@@ -3,6 +3,8 @@ dist/
 __pycache__/
 .ruff_cache/
 .claude/settings.local.json
-# skill-creator eval の実行結果（生成物）。コミットするのは skills/<name>/evals/evals.json のみ
+# eval の実行結果（生成物）。コミットするのは skills/<name>/evals/evals.json と、
+# そこから scripts/gen_plugin_evals.py で生成した evals/<name>/ のケースだけ
+evals/results/
 skills/**/*-workspace/
 skills/**/iteration-*/

@@ -1,0 +1,6 @@
+{
+  "name": "keiba-skills",
+  "description": "競馬に関する Agent Skills 集。この manifest は `claude plugin eval` でスキルを評価するためのもの（skills/ 配下が自動検出される）。",
+  "author": { "name": "zuk2y" },
+  "license": "Apache-2.0"
+}

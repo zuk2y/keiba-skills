@@ -37,6 +37,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 ### ディレクトリ構成
 
 - `skills/<name>/` — スキル本体。`SKILL.md`（必須）・`CHANGELOG.md`・`LICENSE`・`NOTICE`。評価する場合は `evals/`（下記[評価](#評価eval)）。スキル固有のエージェント指針があれば `AGENTS.md`（＋Claude Code 用に `@AGENTS.md` を書いた `CLAUDE.md`）を置く。これらは開発用のため配布 zip からは除外される。
+- `evals/<name>/` — `claude plugin eval` が読むケース（`evals.json` と、あれば `evals/graders.json` から `scripts/gen_plugin_evals.py` で生成）。`evals/results/` は実行結果で gitignore 済み。root の `.claude-plugin/plugin.json` は評価のために `skills/` 配下をプラグインとして束ねる manifest で、配布物には影響しない。
 - `scripts/` — ビルド／リリース／検証スクリプト（Python 統一）。
 - `.github/workflows/` — CI（lint）とリリース自動化。
 
@@ -44,7 +45,7 @@ npx skills add zuk2y/keiba-skills --skill racehorse-naming-ja -a claude-code -a 
 
 - **Python 3.x** — `scripts/*.py` と lint の実行に必要。
 - **pipx** — pre-commit / ruff の実行に使う。導入例: `brew install pipx && pipx ensurepath`（macOS）／ `python3 -m pip install --user pipx`（pip 経由）。
-- **skill-creator** — スキルの評価に使う。
+- **Claude Code v2.1.269 以降** — `claude plugin eval` でスキルを評価する（`claude --version` で確認、`claude update` で更新）。
 
 ### 開発フロー（PR は任意）
 
@@ -95,32 +96,46 @@ ruff は pre-commit が自動管理するため個別インストールは不要
 
 ### 評価（eval）
 
-スキルの **精度** と **トークン量** を計測する。評価エンジンは自前で作らず、Anthropic 公式の
-**skill-creator**（Apache-2.0）を土台にする。欲しい比較軸を公式機構がそのまま持つため:
+スキルの **精度** と **費用** を計測する。評価エンジンは自前で作らず、Claude Code 公式の
+[`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) で回す。ケースの正本は skill-creator 互換の
+`skills/<name>/evals/evals.json` に置き、ランナーが読む形式（`evals/<name>/<NN-ケース名>/prompt.md` ＋
+`graders/*.md`）は `scripts/gen_plugin_evals.py` で生成する。
 
-- **スキル有無**（`with_skill/` vs `without_skill/`）・**修正前後**（`skill-snapshot/` ＋ `comparator`/`analyzer` でブラインド比較）
-- **精度**（`evals.json` のアサーションを `grader` が採点 → `aggregate_benchmark` が pass_rate 集計）
-- **トークン量**（各 run の `total_tokens` を平均±標準偏差で集計）
+**前提**: Claude Code v2.1.269 以降と、普段のセッションと同じ認証（実行と採点はその利用枠／API 課金に乗る）。
 
-**前提（必須）**: 評価には **skill-creator の導入が必須**。本リポジトリには eval データ（`evals.json`）しか
-置かないため、未導入では実行できない。リポジトリに取り込まず Claude Code のプラグインとして導入する:
+**流れ**:
 
-```
-# 対話セッション（Claude Code CLI）では slash コマンドで
-/plugin marketplace add anthropics/skills
-/plugin install example-skills@anthropic-agent-skills
+1. `evals.json`（または `graders.json`）を編集したら `python3 scripts/gen_plugin_evals.py` で生成し直す（pre-commit が `--check` で食い違いを検出する）。
+2. リポジトリ root で回す。初回は「Trust this plugin directory?」に y と答える。
 
-# slash が使えない環境（VSCode 拡張・SDK 等）では等価な CLI サブコマンドで
-claude plugin marketplace add anthropics/skills
-claude plugin install example-skills@anthropic-agent-skills   # 既定 scope=user（リポジトリ外）
-```
+   ```bash
+   # 1 ケースだけ・1 回・対照なし（ケースや採点基準を調整するとき）
+   claude plugin eval . --case "12-*" --runs 1 --ablation none --allow-tools WebSearch --judge-model opus --no-publish
+   # モードで絞る（generate / critique）
+   claude plugin eval . --tag critique --ablation none --allow-tools WebSearch --judge-model opus -j 4 --max-cost-usd 20
+   # 全ケース（費用上限つき、JSON も残す）
+   claude plugin eval . --ablation none --allow-tools WebSearch --judge-model opus -j 4 --max-cost-usd 60 --json evals/results/latest.json
+   ```
 
-導入確認は `claude plugin list`。skill-creator は `example-skills` プラグインに含まれる。
+3. 結果は `evals/results/<timestamp>/` の `aggregate-result.json` と `report.html`（自己完結の HTML。ジャッジの票と根拠まで見える）。
 
-**配置**: eval データは公式レイアウトに合わせて `skills/<name>/evals/evals.json` に置く（SKILL.md と同居）。
+   - 利用枠（session limit）に当たると以降の run はエラー付きの score 0 になる。JSON の `cases[].arms.with[].error` を確認し、該当ケースだけ `--case` で回し直す（`--output-dir` を分けて残す）。
+   - `--case` の glob は `*` と `?` だけ（文字クラス・波括弧は一致しない）。複数ケースを選ぶときは `--tag` か、1 ケースずつ起動する。
 
-- 配布物には含めない。`scripts/build.py` はスキルのルート直下 `evals/` を zip から除外する（公式 `package_skill.py` の `ROOT_EXCLUDE_DIRS` に準拠）。
-- skill-creator の実行結果（`*-workspace/`・`iteration-*/` 等）は生成物なのでコミットしない（[.gitignore](.gitignore) で除外）。コミットするのは `evals.json` だけ。
+**費用を抑える設計**（生成スクリプトの定数と実行フラグに対応）:
+
+- 実行は MCP・CLAUDE.md・個人設定を載せない隔離セッション。固定文脈はサブエージェント方式（約 37k tokens）の半分程度で、毎ターンの読み直しがその分減る（39 ケース実測の 1 ラン中央値: API ターン 18→5、Σcache_read 1.19M→0.11M、Σcache_create 70k→40k）。
+- 各ケース `runs: 1`・`max_turns: 40`・`timeout_seconds: 1200`。結果が割れるケースだけ `--runs 3` で回す。暴走は `--max-cost-usd` で止める。
+- `--ablation none` で「スキル無し」対照を省く（既定の with-without は倍の費用。description の発火確認や有無比較のときだけ既定で回す）。
+- 採点は各アサーションを 1 つの grader にし、`skill-fired` grader でスキルの発火を記録する。既定は `llm` grader（3 票の多数決、毎回回答全文を読む）。採点費用は grader の数で決まるので、`skills/<name>/evals/graders.json` で **文字の有無で決まる条件を `regex` grader（モデルを呼ばない）に**、**同じ側面の条件を 1 つの `llm` grader に統合**（`weight` は既定で本数ぶん）できる。文言は evals.json のアサーションと完全一致させる（lint が検証）。regex は SKILL.md が定める節名・語（凡例・良い点／気になる点・要確認・総合判定など）を、実測で見られた言い換えごと受ける書き方にし、切り替え前に保存済み回答へ当てて llm 判定と一致することを確かめる（racehorse-naming-ja: 320 grader → llm 246 ＋ regex 59、39 出力で全一致）。ジャッジは `--judge-model opus` を指定する（39 ケース実測で、Sonnet ジャッジは 320 grader 中 68 本を旧方式の Opus 採点と食い違う FAIL にした。日本語の条件文の読み違いが主因で、Opus ジャッジは旧方式の Opus 採点と同じ通過率 0.94 に揃った。ジャッジ費用はランナー見積で 1 周 $45 前後と実行費用（$67 前後）に迫るので、普段は `--tag` や `--case` で対象を絞る）。アサーションが SKILL.md の規定（表示名など）を前提にしている場合は、生成スクリプトがその規定を grader の基準文に同梱する（`SKILL_CONTEXT`）。
+- ツールは WebSearch のみ。WebFetch は 1 回 3〜10k tokens を文脈に足すので評価では許可しない（SKILL.md は「一般的なウェブ検索で照合」としており仕様に反しない）。
+- `append_system_prompt` で指示するのは「回答は最終メッセージに全文を書く」「独立した検索は 1 ターンに並列発行する」だけ（判定や手順には触れない）。
+
+**比較軸**:
+
+- **修正前後**: 修正の前後で同じコマンドを回し、`aggregate-result.json` の `cases[].aggregates.score` と `graders` の verdict を突き合わせる。
+- **スキル有無**: `--ablation with-without`（既定）で `Δ` を見る。
+- **費用**: JSON の `costUsd`（定価換算、ジャッジ込み）と `durationSeconds`。トークン内訳が要るときは `--keep-temp` で残る `trace.jsonl` の `usage` を集計する。
 
 **品評ケースのメタデータ**: 品評ケース（`"mode": "品評"`）は期待する採点を機械可読な形で持ち、`scripts/lint_skills.py` が SKILL.md の「土台グレード」表と突き合わせて自己矛盾（記号と帯の食い違い）を検出する。
 
