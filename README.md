@@ -115,9 +115,11 @@ ruff は pre-commit が自動管理するため個別インストールは不要
    claude plugin eval . --ablation none --allow-tools WebSearch --judge-model opus -j 4 --max-cost-usd 60 --json evals/results/latest.json
    ```
 
-3. 結果は `evals/results/<timestamp>/` の `aggregate-result.json` と `report.html`（自己完結の HTML。ジャッジの票と根拠まで見える）。
+3. 結果は `evals/results/<timestamp>/` の `aggregate-result.json` と `report.html`（自己完結の HTML。ジャッジの票まで見える）。
 
-   - 利用枠（session limit）に当たると以降の run はエラー付きの score 0 になる。JSON の `cases[].arms.with[].error` を確認し、該当ケースだけ `--case` で回し直す（`--output-dir` を分けて残す）。
+   - 利用枠（session limit）に当たると以降の run はエラー付きの score 0 になる。JSON の `cases[].arms.with[].error` を確認し、該当ケースだけ `--case` で回し直す（`--output-dir` を分けて残す）。採点の途中で当たった場合は run の `error` が空のまま、その grader の `explanation` が `grader threw: judge call failed …` になり、未採点のまま FAIL に数えられる。
+   - ジャッジがどの文を見て FAIL にしたかは残らない。`python3 scripts/rejudge_evals.py <result.json>... --eval-dir <版>/evals` で、保存した回答を1つの grader の基準文で判定し直し、該当文を型つきで引用させられる（既定は内部呼称の grader、1件1票）。旧版と新版の回答に同じ基準文を当てれば、grader に同梱される SKILL.md の違い（`SKILL_CONTEXT`）に左右されずに比べられる。
+   - 内部呼称の grader のように票が割れやすい条件は、3票でも 2-1 がよく出る。1〜3 ランの差を改善と読まず、比べるなら各6ラン以上で回す。
    - `--case` の glob は `*` と `?` だけ（文字クラス・波括弧は一致しない）。複数ケースを選ぶときは `--tag` か、1 ケースずつ起動する。
 
 **費用を抑える設計**（生成スクリプトの定数と実行フラグに対応）:
