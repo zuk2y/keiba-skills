@@ -3,8 +3,7 @@ Copyright 2026 zuk2y
 
 Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-The racehorse-naming-ja skill includes a summary, in its own words, of
-naming-registration criteria published by the Japan Association for
-International Racing and Stud Book (JAIRS). Copyright of the original
-documents remains with JAIRS; see SKILL.md for the source URLs. This
+Notices for material included in an individual skill (for example,
+summaries of documents published by third parties) are in the NOTICE
+file of that skill's directory (skills/<skill-name>/NOTICE). This
 project is not affiliated with JAIRS, JRA or NAR.
