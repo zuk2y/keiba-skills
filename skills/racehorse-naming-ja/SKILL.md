@@ -4,7 +4,7 @@ description: 日本の競走馬の馬名を考案・品評するためのスキ�
 license: Apache-2.0
 metadata:
   author: zuk2y
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # 競走馬の馬名 考案・品評スキル
